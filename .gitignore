@@ -39,3 +39,6 @@ payload_01
 # OS specific
 Thumbs.db
 desktop.ini
+
+releases/
+archive/

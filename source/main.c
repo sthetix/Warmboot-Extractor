@@ -162,6 +162,14 @@ void print_header(void) {
     SETCOLOR(COLOR_CYAN, COLOR_DEFAULT);
     print_centered(30, "WARMBOOT EXTRACTOR");
     RESETCOLOR;
+
+    // Display version centered below title
+    char version_str[32];
+    s_printf(version_str, "v%d.%d.%d", LP_VER_MJ, LP_VER_MN, LP_VER_BF);
+    SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
+    print_centered(70, version_str);
+    RESETCOLOR;
+
     gfx_printf("\n");
 }
 
