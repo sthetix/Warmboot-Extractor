@@ -40,8 +40,7 @@
 #define COLOR_BLUE      0xFF0000FF
 #define COLOR_YELLOW    0xFFFFDD00
 #define COLOR_ORANGE    0xFFFF9900
-#define COLOR_CYAN      0xFF00D7FF
-#define COLOR_VIOLET    0xFFFF00FF
+// COLOR_CYAN and COLOR_VIOLET are defined in utils/types.h
 #define COLOR_DEFAULT   0xFF1B1B1B
 #define SETCOLOR(fg, bg) gfx_con_setcol(fg, 1, bg)
 #define RESETCOLOR SETCOLOR(COLOR_WHITE, COLOR_DEFAULT)
@@ -161,7 +160,7 @@ void print_header(void) {
     gfx_con_setpos(0, 0);
 
     SETCOLOR(COLOR_CYAN, COLOR_DEFAULT);
-    print_centered(10, "WARMBOOT EXTRACTOR");
+    print_centered(30, "WARMBOOT EXTRACTOR");
     RESETCOLOR;
     gfx_printf("\n");
 }
@@ -194,49 +193,46 @@ void warmboot_extraction_workflow(void) {
 
     print_header();
 
-    // Load external fuse database from SD card (optional, uses hardcoded fallback)
-    load_wb_database_from_sd();
-
     // Display system information
-    int y_pos = 48;
+    int y_pos = 148;
     SETCOLOR(COLOR_CYAN, COLOR_DEFAULT);
-    gfx_con_setpos(24, y_pos);
+    gfx_con_setpos(251, y_pos);
     gfx_printf("System Information:");
     RESETCOLOR;
 
     // Detect SoC type
     y_pos += 32;
     bool mariko = is_mariko();
-    print_info(24, y_pos, "SoC Type", mariko ? "Mariko (T210B01)" : "Erista (T210)");
+    print_info(251, y_pos, "SoC Type", mariko ? "Mariko (T210B01)" : "Erista (T210)");
 
     // Read burnt fuses (display early for user info)
     y_pos += 32;
     u8 burnt_fuses = get_burnt_fuses();
     s_printf(temp, "%d fuses", burnt_fuses);
-    print_info(24, y_pos, "Burnt Fuses", temp);
+    print_info(251, y_pos, "Burnt Fuses", temp);
 
     y_pos += 48;
 
     // Extract warmboot (Mariko only - Erista uses embedded warmboot)
     if (mariko) {
-        print_status(24, y_pos, "Extracting warmboot firmware from Package1...", COLOR_WHITE);
-        y_pos += 32; 
+        print_status(251, y_pos, "Extracting warmboot firmware from Package1...", COLOR_WHITE);
+        y_pos += 32;
 
         wb_extract_error_t err = extract_warmboot_from_pkg1_ex(&wb_info);
         if (err != WB_SUCCESS) {
-            print_status(24, y_pos, "Failed to extract warmboot!", COLOR_RED);
+            print_status(251, y_pos, "Failed to extract warmboot!", COLOR_RED);
             y_pos += 32;
 
             // Show specific error
             SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-            gfx_con_setpos(24, y_pos);
+            gfx_con_setpos(251, y_pos);
             gfx_printf("Error code: ");
             SETCOLOR(COLOR_ORANGE, COLOR_DEFAULT);
             gfx_printf("%d", err);
             RESETCOLOR;
             y_pos += 16;
             SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-            gfx_con_setpos(24, y_pos);
+            gfx_con_setpos(251, y_pos);
             gfx_printf("Details: ");
             SETCOLOR(COLOR_ORANGE, COLOR_DEFAULT);
             gfx_printf("%s", wb_error_to_string(err));
@@ -247,118 +243,45 @@ void warmboot_extraction_workflow(void) {
         }
     } else {
         // Erista: Skip extraction - Atmosphere uses embedded warmboot
-        print_status(24, y_pos, "Erista detected - warmboot is embedded in Atmosphere", COLOR_WHITE);
+        print_status(251, y_pos, "Erista detected - warmboot is embedded in Atmosphere", COLOR_WHITE);
         y_pos += 32;
-        print_status(24, y_pos, "No extraction needed for Erista consoles", COLOR_CYAN);
+        print_status(251, y_pos, "No extraction needed for Erista consoles", COLOR_CYAN);
         goto wait_exit;
     }
 
-    print_status(24, y_pos, "Warmboot extracted successfully!", COLOR_GREEN);
+    print_status(251, y_pos, "Warmboot extracted successfully!", COLOR_GREEN);
     y_pos += 48;
-
-    // Calculate expected fuses (what Atmosphere uses for naming)
-    u32 expected_fuses = get_expected_fuse_version(wb_info.target_firmware);
 
     // Display warmboot information
     SETCOLOR(COLOR_CYAN, COLOR_DEFAULT);
-    gfx_con_setpos(24, y_pos);
+    gfx_con_setpos(251, y_pos);
     gfx_printf("Warmboot Information:");
     RESETCOLOR;
     y_pos += 32;
 
     s_printf(temp, "0x%X (%d bytes)", wb_info.size, wb_info.size);
-    print_info(24, y_pos, "Size", temp);
+    print_info(251, y_pos, "Size", temp);
     y_pos += 32;
 
     // Display target firmware
     if (wb_info.target_firmware != 0) {
-        s_printf(temp, "0x%04X (%c%c%c%c/%c%c/%c%c)", 
+        s_printf(temp, "0x%04X (%c%c%c%c/%c%c/%c%c)",
                  wb_info.target_firmware,
                  wb_info.pkg1_date[0], wb_info.pkg1_date[1], wb_info.pkg1_date[2], wb_info.pkg1_date[3],
                  wb_info.pkg1_date[4], wb_info.pkg1_date[5],
                  wb_info.pkg1_date[6], wb_info.pkg1_date[7]);
-        print_info(24, y_pos, "Target Firmware", temp);
+        print_info(251, y_pos, "Target Firmware", temp);
         y_pos += 32;
     } else {
-        print_info(24, y_pos, "Target Firmware", "Unknown (new FW?)");
+        print_info(251, y_pos, "Target Firmware", "Unknown (new FW?)");
         y_pos += 32;
         SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-        gfx_con_setpos(24, y_pos);
+        gfx_con_setpos(251, y_pos);
         gfx_printf("Note: Firmware not recognized, using burnt fuses for naming.");
         y_pos += 16;
-        gfx_con_setpos(24, y_pos);
+        gfx_con_setpos(251, y_pos);
         gfx_printf("Extraction still works - warmboot binary is valid.");
         RESETCOLOR;
-        y_pos += 32;
-    }
-
-    // Display fuse information with clear comparison
-    y_pos += 16;
-    SETCOLOR(COLOR_CYAN, COLOR_DEFAULT);
-    gfx_con_setpos(24, y_pos);
-    gfx_printf("Fuse Information (Critical for naming):");
-    RESETCOLOR;
-    y_pos += 32;
-
-    s_printf(temp, "%d (0x%02X)", wb_info.burnt_fuses, wb_info.burnt_fuses);
-    print_info(24, y_pos, "Burnt Fuses (device)", temp);
-    y_pos += 32;
-
-    s_printf(temp, "%d (0x%02X)", expected_fuses, expected_fuses);
-    print_info(24, y_pos, "Expected Fuses (FW)", temp);
-    y_pos += 32;
-
-    // Show naming comparison
-    if (wb_info.burnt_fuses == expected_fuses) {
-        SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-        gfx_con_setpos(24, y_pos);
-        gfx_printf("MATCH: ");
-        SETCOLOR(COLOR_GREEN, COLOR_DEFAULT);
-        gfx_printf("This script and AMS will use same filename!");
-        RESETCOLOR;
-        y_pos += 32;
-    } else if (wb_info.burnt_fuses > expected_fuses) {
-        SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-        gfx_con_setpos(24, y_pos);
-        gfx_printf("DOWNGRADE: burnt(");
-        SETCOLOR(COLOR_ORANGE, COLOR_DEFAULT);
-        gfx_printf("%d", wb_info.burnt_fuses);
-        SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-        gfx_printf(") > expected(");
-        SETCOLOR(COLOR_ORANGE, COLOR_DEFAULT);
-        gfx_printf("%d", expected_fuses);
-        SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-        gfx_printf(")");
-        RESETCOLOR;
-        y_pos += 16;
-        gfx_con_setpos(24, y_pos);
-        SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-        gfx_printf("  AMS saves as: wb_%02x.bin (expected fuses)", expected_fuses);
-        y_pos += 16;
-        gfx_con_setpos(24, y_pos);
-        gfx_printf("  This saves:   wb_%02x.bin (burnt fuses)", wb_info.burnt_fuses);
-        RESETCOLOR;
-        y_pos += 32;
-    } else {
-        SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-        gfx_con_setpos(24, y_pos);
-        gfx_printf("WARNING: burnt(");
-        SETCOLOR(COLOR_RED, COLOR_DEFAULT);
-        gfx_printf("%d", wb_info.burnt_fuses);
-        SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-        gfx_printf(") < expected(");
-        SETCOLOR(COLOR_RED, COLOR_DEFAULT);
-        gfx_printf("%d", expected_fuses);
-        SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-        gfx_printf(") - unusual!");
-        RESETCOLOR;
-        y_pos += 32;
-    }
-
-    // Check warmboot metadata
-    warmboot_metadata_t *meta = (warmboot_metadata_t *)(wb_info.data + 4);
-    if (meta->magic == 0x30544257) {  // "WBT0"
-        print_info(24, y_pos, "Metadata Magic", "WBT0 (Valid)");
         y_pos += 32;
     }
 
@@ -370,34 +293,25 @@ void warmboot_extraction_workflow(void) {
     // So saving with burnt fuses ensures the file is found when needed
     get_warmboot_path(path, sizeof(path), wb_info.burnt_fuses);
 
-    print_status(24, y_pos, "Saving warmboot to SD card...", COLOR_WHITE);
+    print_status(251, y_pos, "Saving warmboot to SD card...", COLOR_WHITE);
     y_pos += 32;
 
-    // Show both paths for clarity
-    gfx_con_setpos(24, y_pos);
+    // Show save path
+    gfx_con_setpos(251, y_pos);
     SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-    gfx_printf("Saving to: ");
+    gfx_printf("Filename: ");
     SETCOLOR(COLOR_CYAN, COLOR_DEFAULT);
     gfx_printf("wb_%02x.bin", wb_info.burnt_fuses);
-    SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-    gfx_printf(" (burnt fuses)");
     RESETCOLOR;
     y_pos += 32;
 
     if (!save_warmboot_to_sd(&wb_info, path)) {
-        print_status(24, y_pos, "Failed to save warmboot to SD!", COLOR_RED);
+        print_status(251, y_pos, "Failed to save warmboot to SD!", COLOR_RED);
         goto cleanup_exit;
     }
 
-    print_status(24, y_pos, "Warmboot saved successfully!", COLOR_GREEN);
+    print_status(251, y_pos, "Warmboot saved successfully!", COLOR_GREEN);
     y_pos += 48;
-
-    // Display success summary
-    y_pos += 16;
-    SETCOLOR(COLOR_CYAN, COLOR_DEFAULT);
-    print_centered(y_pos, "EXTRACTION COMPLETED SUCCESSFULLY");
-    RESETCOLOR;
-    y_pos += 32;
 
 cleanup_exit:
     // Free warmboot data
@@ -407,7 +321,7 @@ cleanup_exit:
 wait_exit:
     // Footer
     SETCOLOR(COLOR_RED, COLOR_DEFAULT);
-    print_centered(650, "Power: Back to Hekate | 3-Finger: Screenshot");
+    print_centered(680, "Power: Turn Off | Vol-: Back to Hekate | 3-Finger: Screenshot");
     RESETCOLOR;
 
     // Initialize touchscreen for 3-finger screenshot support
@@ -437,20 +351,20 @@ wait_exit:
                 if (!save_fb_to_bmp())
                 {
                     SETCOLOR(COLOR_GREEN, COLOR_DEFAULT);
-                    print_centered(680, "Screenshot saved!");
+                    print_centered(640, "Screenshot saved!");
                     RESETCOLOR;
                     msleep(800);
                     // Clear the message
-                    print_centered(680, "                     ");
+                    print_centered(640, "                     ");
                 }
                 else
                 {
                     SETCOLOR(COLOR_RED, COLOR_DEFAULT);
-                    print_centered(680, "Screenshot failed!");
+                    print_centered(640, "Screenshot failed!");
                     RESETCOLOR;
                     msleep(800);
                     // Clear the message
-                    print_centered(680, "                      ");
+                    print_centered(640, "                      ");
                 }
             }
         }
@@ -480,8 +394,15 @@ wait_exit:
             continue;
         }
 
-        // Power button: go back to Hekate (same as vol-)
+        // Power button: Turn off
         if (btn & BTN_POWER)
+        {
+            power_set_state(POWER_OFF);
+            while (true) bpmp_halt();
+        }
+
+        // Vol- button: Back to Hekate
+        if (btn & BTN_VOL_DOWN)
         {
             break;
         }

@@ -79,8 +79,6 @@ bool save_warmboot_to_sd(const warmboot_info_t *wb_info, const char *path);
 u8 get_burnt_fuses(void);
 bool is_mariko(void);
 void get_warmboot_path(char *path, size_t path_size, u8 fuse_count);
-u32 get_expected_fuse_version(u32 target_firmware);
-bool load_wb_database_from_sd(void);
 const char *wb_error_to_string(wb_extract_error_t err);
 
 #endif /* _WARMBOOT_EXTRACTOR_H_ */

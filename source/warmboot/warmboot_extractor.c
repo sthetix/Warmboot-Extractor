@@ -27,20 +27,6 @@
 // Mariko keyslot for BEK (Boot Encryption Key)
 #define KS_MARIKO_BEK 13
 
-// Database entry structure for firmware -> fuse mapping
-typedef struct {
-    u32 firmware_version;
-    u32 fuse_count;
-} fuse_db_entry_t;
-
-// Max database entries (covers future firmware releases)
-#define MAX_DB_ENTRIES 64
-
-// Global database cache
-static fuse_db_entry_t fuse_database[MAX_DB_ENTRIES];
-static u32 db_entry_count = 0;
-static bool db_loaded = false;
-
 // Helper function to check if this is Mariko hardware
 bool is_mariko(void) {
     // Check SoC ID register to determine if Mariko
@@ -124,123 +110,6 @@ static u32 get_target_firmware_from_pkg1(const u8 *package1) {
             break;
     }
     return 0;  // Unknown
-}
-
-// Load fuse database from sd:/config/wb_db.txt
-// Format: FIRMWARE_VERSION=FUSE_COUNT (hex values)
-// Example: 0x1500=22
-bool load_wb_database_from_sd(void) {
-    if (db_loaded) return true;  // Already loaded
-    
-    FIL fp;
-    FRESULT res;
-    char buffer[128];
-    
-    // Try to mount SD card
-    if (!sd_mount()) {
-        return false;  // SD card not available, will use hardcoded
-    }
-    
-    // Try to open database file
-    res = f_open(&fp, "sd:/config/wb_db.txt", FA_READ);
-    if (res != FR_OK) {
-        sd_end();
-        return false;  // File not found, will use hardcoded
-    }
-    
-    db_entry_count = 0;
-    
-    // Parse database file
-    while (f_gets(buffer, sizeof(buffer), &fp) != NULL && db_entry_count < MAX_DB_ENTRIES) {
-        // Skip comments and empty lines
-        if (buffer[0] == '#' || buffer[0] == '\n' || buffer[0] == '\r') {
-            continue;
-        }
-        
-        // Parse "FIRMWARE_VERSION=FUSE_COUNT"
-        char *eq_pos = strchr(buffer, '=');
-        if (!eq_pos) continue;
-        
-        u32 fw_ver = 0;
-        u32 fuse_cnt = 0;
-        
-        // Parse firmware version (hex)
-        if (sscanf(buffer, "%x=%u", &fw_ver, &fuse_cnt) == 2) {
-            fuse_database[db_entry_count].firmware_version = fw_ver;
-            fuse_database[db_entry_count].fuse_count = fuse_cnt;
-            db_entry_count++;
-        }
-    }
-    
-    f_close(&fp);
-    sd_end();
-    
-    db_loaded = (db_entry_count > 0);
-    return db_loaded;
-}
-
-// Get expected fuse version for a given target firmware
-// Based on Atmosphere fuse::GetExpectedFuseVersion in fuse_api.cpp
-// The array has 22 entries, returns (22 - index) where index is first match
-u32 get_expected_fuse_version(u32 target_firmware) {
-    // Try external database first (if loaded)
-    if (db_loaded && db_entry_count > 0) {
-        // Linear search through database (sorted descending)
-        for (u32 i = 0; i < db_entry_count; i++) {
-            if (target_firmware >= fuse_database[i].firmware_version) {
-                return fuse_database[i].fuse_count;
-            }
-        }
-    }
-    
-    // Fallback to hardcoded database
-    // FuseVersionIncrementFirmwares array (22 entries, sorted descending):
-    // Index 0:  21.0.0 -> returns 22
-    // Index 1:  20.0.0 -> returns 21
-    // Index 2:  19.0.0 -> returns 20
-    // Index 3:  17.0.0 -> returns 19 (note: no 18.0.0 entry!)
-    // Index 4:  16.0.0 -> returns 18
-    // Index 5:  15.0.0 -> returns 17
-    // Index 6:  13.2.1 -> returns 16
-    // Index 7:  12.0.2 -> returns 15
-    // Index 8:  11.0.0 -> returns 14
-    // Index 9:  10.0.0 -> returns 13
-    // Index 10: 9.1.0  -> returns 12
-    // Index 11: 9.0.0  -> returns 11
-    // Index 12: 8.1.0  -> returns 10
-    // Index 13: 7.0.0  -> returns 9
-    // Index 14: 6.2.0  -> returns 8
-    // Index 15: 6.0.0  -> returns 7
-    // Index 16: 5.0.0  -> returns 6
-    // Index 17: 4.0.0  -> returns 5
-    // Index 18: 3.0.2  -> returns 4
-    // Index 19: 3.0.0  -> returns 3
-    // Index 20: 2.0.0  -> returns 2
-    // Index 21: 1.0.0  -> returns 1
-
-    if (target_firmware >= 0x1500) return 22; // 21.0.0+
-    if (target_firmware >= 0x1400) return 21; // 20.0.0+
-    if (target_firmware >= 0x1300) return 20; // 19.0.0+
-    if (target_firmware >= 0x1100) return 19; // 17.0.0+ (no 18.0.0 fuse bump)
-    if (target_firmware >= 0x1000) return 18; // 16.0.0+
-    if (target_firmware >= 0xF00)  return 17; // 15.0.0+
-    if (target_firmware >= 0xD21)  return 16; // 13.2.1+
-    if (target_firmware >= 0xC02)  return 15; // 12.0.2+
-    if (target_firmware >= 0xB00)  return 14; // 11.0.0+
-    if (target_firmware >= 0xA00)  return 13; // 10.0.0+
-    if (target_firmware >= 0x910)  return 12; // 9.1.0+
-    if (target_firmware >= 0x900)  return 11; // 9.0.0+
-    if (target_firmware >= 0x810)  return 10; // 8.1.0+
-    if (target_firmware >= 0x700)  return 9;  // 7.0.0+
-    if (target_firmware >= 0x620)  return 8;  // 6.2.0+
-    if (target_firmware >= 0x600)  return 7;  // 6.0.0+
-    if (target_firmware >= 0x500)  return 6;  // 5.0.0+
-    if (target_firmware >= 0x400)  return 5;  // 4.0.0+
-    if (target_firmware >= 0x302)  return 4;  // 3.0.2+
-    if (target_firmware >= 0x300)  return 3;  // 3.0.0+
-    if (target_firmware >= 0x200)  return 2;  // 2.0.0+
-    if (target_firmware >= 0x100)  return 1;  // 1.0.0+
-    return 0;
 }
 
 // Error code to string for debugging
@@ -529,7 +398,7 @@ bool save_warmboot_to_sd(const warmboot_info_t *wb_info, const char *path) {
     }
 
     f_close(&fp);
-    
+
     // Verify write succeeded
     return (bytes_written == wb_info->size);
 }

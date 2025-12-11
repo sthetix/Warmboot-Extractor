@@ -45,7 +45,6 @@ extern FATFS sd_fs;
 void sd_error_count_increment(u8 type);
 u16 *sd_get_error_count();
 bool sd_get_card_removed();
-bool sd_get_card_initialized();
 bool sd_get_card_mounted();
 u32  sd_get_mode();
 int  sd_init_retry(bool power_cycle);
