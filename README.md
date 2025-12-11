@@ -4,13 +4,13 @@
   <img src="images/preview.png" alt="Warmboot Extractor Preview" width="65%">
 </p>
 
-A Nintendo Switch payload tool to extract warmboot firmware from Package1 and cache it to SD card.
+A Nintendo Switch payload tool to extract warmboot firmware from Package1 and save it to SD card.
 
 **Mariko Consoles Only**: This tool is exclusively for Mariko (V2, Lite, OLED) consoles. Erista consoles use an embedded warmboot binary and do not require extraction.
 
 ## Overview
 
-This tool extracts the warmboot firmware from your Mariko Switch's Package1 (stored in BOOT0) and saves it to the SD card as cache files used by Atmosphère. Mariko consoles (Switch V2, Lite, and OLED) cache warmboot firmware separately for each fuse count.
+This tool extracts the warmboot firmware from your Mariko Switch's Package1 (stored in BOOT0) and saves it to the SD card as cache files used by Atmosphère. Mariko consoles (Switch V2, Lite, and OLED) require separate warmboot firmware files for each fuse count.
 
 ## When to Use This Tool
 
@@ -42,27 +42,38 @@ This tool is essential when:
 
 ## Features
 
-- **Mariko SoC Detection**: Confirms running on Mariko (T210B01) hardware
+- **SoC Detection**: Automatically detects Mariko (T210B01) or Erista (T210) hardware
+- **Mariko-Specific Extraction**: Extracts warmboot from Package1 on Mariko consoles
+- **Erista Skip**: Skips extraction on Erista consoles (uses embedded warmboot)
 - **Package1 Parsing**: Automatically locates and parses PK11 container from BOOT0
-- **Warmboot Extraction**: Extracts warmboot firmware (2-4KB binary)
-- **Fuse-based Caching**: Creates warmboot cache file for current fuse count
+- **Fuse Count Display**: Shows burnt fuse count from ODM6/ODM7 registers
 
 ## How It Works
 
 ### Mariko Warmboot Extraction:
 The tool extracts warmboot from Package1 and creates a cache file **used by Atmosphère**:
-1. Verifies running on Mariko (T210B01) hardware
-2. Reads Package1 from BOOT0 at offset 0x100000
-3. Locates and parses the PK11 container (offset 0x4000 or 0x7000)
-4. Skips known payloads (NX bootloader, secure monitor)
-5. Extracts warmboot firmware (validated 0x800-0x1000 bytes)
-6. Reads burnt fuse count from ODM6/ODM7 fuse registers
-7. Saves to `sd:/warmboot_mariko/wb_XX.bin` based on current fuse count
+1. Initializes hardware and display in horizontal mode (1280x720)
+2. Detects SoC type (Mariko T210B01 or Erista T210)
+3. Displays system information (SoC type and burnt fuse count)
+4. For Mariko consoles:
+   - Reads Package1 from BOOT0 at offset 0x100000
+   - Locates and parses the PK11 container (offset 0x4000 or 0x7000)
+   - Extracts warmboot firmware (validated 0x800-0x1000 bytes)
+   - Reads burnt fuse count from ODM6/ODM7 fuse registers
+   - Displays target firmware version from Package1 metadata
+   - Saves to `sd:/warmboot_mariko/wb_XX.bin` based on burnt fuse count
+5. For Erista consoles:
+   - Displays message that extraction is not needed
+   - Skips extraction (Atmosphère uses embedded warmboot)
+6. Shows result status with color-coded messages
+7. Waits for user input (Power off, Vol- for Hekate, or 3-finger screenshot)
 
-**Filename format**: `wb_XX.bin` where XX = fuse count in lowercase hex
-- Example: 8 fuses → `wb_08.bin`
-- Example: 22 fuses → `wb_16.bin` (0x16 = 22 decimal)
-- Example: 31 fuses → `wb_1f.bin`
+**Filename format**: `wb_XX.bin` where XX = burnt fuse count in lowercase hex
+- Example: 8 burnt fuses → `wb_08.bin`
+- Example: 22 burnt fuses → `wb_16.bin` (0x16 = 22 decimal)
+- Example: 31 burnt fuses → `wb_1f.bin`
+
+**Note**: This tool uses **burnt fuses** for naming (not expected fuses). This ensures Atmosphère finds the cache file when searching for compatible warmboot on downgraded systems.
 
 ## Package1 Structure
 
@@ -106,9 +117,11 @@ This will:
 ### Build Output
 
 ```
-output/warmboot_extractor.bin       # Compressed payload
-loader/warmboot_extractor.bin       # Final payload for Hekate
+output/Warmboot_Extractor.bin       # Final payload for Hekate/injector 
+
 ```
+
+The `output/Warmboot_Extractor.bin` file is the payload you copy to your SD card.
 
 ## Usage
 
@@ -116,14 +129,19 @@ loader/warmboot_extractor.bin       # Final payload for Hekate
 
 1. **Copy payload to SD card**:
    ```
-   sd:/bootloader/payloads/warmboot_extractor.bin
+   sd:/bootloader/payloads/Warmboot_Extractor.bin
    ```
 
 2. **Launch from Hekate** or your preferred payload injector
 
-3. **View extraction status** on horizontal display
+3. **View extraction status** 
 
-4. **Check SD card** for extracted warmboot cache files:
+4. **Interact with the payload**:
+   - Power button: Turn off console
+   - Vol- button: Return to Hekate
+   - Three-finger touch: Take screenshot (saved to SD card)
+
+5. **Check SD card** for extracted warmboot cache files:
    - Location: `sd:/warmboot_mariko/`
    - Files: `wb_XX.bin` where XX = fuse count in lowercase hex
 
@@ -150,23 +168,24 @@ loader/warmboot_extractor.bin       # Final payload for Hekate
 
 2. **Tool output**:
    ```
+   WARMBOOT EXTRACTOR
+
    System Information:
-   ─────────────────────────────────────────────────────
-       SoC Type            : Mariko (T210B01)
-       Burnt Fuses         : 22 fuses
+       SoC Type: Mariko (T210B01)
+       Burnt Fuses: 22 fuses
 
    [*] Extracting warmboot firmware from Package1...
    [*] Warmboot extracted successfully!
 
    Warmboot Information:
-   ─────────────────────────────────────────────────────
-       Size                : 0xE80 (3712 bytes)
-       Required Fuse Count : 22
-       Metadata Magic      : WBT0 (Valid)
+       Size: 0xE80 (3712 bytes)
+       Target Firmware: 0x1600 (2024/10/15)
 
    [*] Saving warmboot to SD card...
-       Path: sd:/warmboot_mariko/wb_16.bin
+       Filename: wb_16.bin
    [*] Warmboot saved successfully!
+
+   Power: Turn Off | Vol-: Back to Hekate | 3-Finger: Screenshot
    ```
 
 3. **Boot emuMMC with old Atmosphère**:
@@ -177,6 +196,8 @@ loader/warmboot_extractor.bin       # Final payload for Hekate
 ### Why This Works
 
 **Atmosphère's Warmboot Caching Logic:**
+
+When Atmosphère detects a fuse count mismatch (burnt fuses > expected fuses), it searches for cached warmboot files:
 
 ```cpp
 // If burnt fuses > expected, search cache for compatible version
@@ -192,22 +213,32 @@ if (burnt_fuses > expected_fuses) {
 
 **The key insight**: Atmosphère will use a cached warmboot if:
 - Burnt fuses (22) > firmware's expected fuses (19)
-- Cached warmboot exists for burnt fuse count
-- This tool pre-populates that cache!
+- Cached warmboot exists for **burnt fuse count** (not expected fuses)
+- This tool pre-populates that cache using the **current burnt fuse count**
+- Naming by burnt fuses ensures the file is found during Atmosphère's search loop
 
 ### Troubleshooting
 
 **"Failed to extract warmboot"**
-- **Cause**: Unable to access BOOT0 or corrupted package1
+- **Cause**: Unable to access BOOT0 or corrupted Package1
 - **Fix**: Ensure Switch is on and not in low battery state
+- **Note**: Tool displays error code and detailed error message
 
 **"Failed to save warmboot to SD"**
-- **Cause**: SD card read-only or full
-- **Fix**: Check SD card, ensure write permissions
+- **Cause**: SD card read-only, full, or not properly mounted
+- **Fix**: Check SD card, ensure write permissions and sufficient space
+
+**"Erista detected - warmboot is embedded in Atmosphere"**
+- **Cause**: Running on Erista (T210) console
+- **Note**: This is expected behavior - Erista consoles do not need extraction
 
 **Sleep still broken after extraction**
 - **Cause**: Atmosphère incompatibility beyond warmboot
 - **Fix**: Wait for official Atmosphère update
+
+**Tool shows "Unknown (new FW?)" for firmware**
+- **Cause**: Firmware version not in database
+- **Note**: Extraction still works - burnt fuse count is used for naming
 
 ### What This Tool Does NOT Fix
 
@@ -216,79 +247,38 @@ if (burnt_fuses > expected_fuses) {
 - Old Atmosphère may still fail to boot or crash
 - Warmboot cache only fixes sleep mode
 
-**Does not extract from emuMMC boot0:**
-- Tool reads from sysNAND boot0 (where new firmware is)
+**Does not extract from emuMMC BOOT0:**
+- Tool reads from sysNAND BOOT0 (where new firmware is)
 - This is intentional - you want warmboot from NEW firmware
-- emuMMC's old boot0 has old warmboot (which doesn't work with new fuse count)
+- emuMMC's old BOOT0 has old warmboot (which doesn't work with new fuse count)
 
 **Does fix:**
 - Sleep mode on emuMMC with old Atmosphère after sysNAND update
 - Eliminates waiting for Atmosphère devs just for warmboot cache
+- Provides immediate solution while waiting for official Atmosphère release
 
-## Warmboot Metadata
+## Display Information
 
-The warmboot binary includes a metadata header:
+The tool displays comprehensive information during extraction:
 
-```c
-struct Metadata {
-    u32 magic;              // "WBT0" (0x30544257)
-    u32 target_firmware;    // Target firmware version
-    u32 reserved[2];        // Reserved fields
-};
-```
+### System Information
+- **SoC Type**: Mariko (T210B01) or Erista (T210)
+- **Burnt Fuses**: Current fuse count read from ODM6/ODM7 registers
 
-## Firmware-to-Fuse Database
+### Warmboot Information (Mariko only)
+- **Size**: Binary size in hex and decimal (e.g., 0xE80 / 3712 bytes)
+- **Target Firmware**: Version code and Package1 build date (e.g., 0x1600 YYYY/MM/DD)
+- **Filename**: Output filename based on burnt fuses (e.g., wb_16.bin)
 
-This tool uses an **external database** that maps firmware versions to their required fuse counts. This eliminates the need to recompile for each new firmware release.
+### Status Messages
+- Color-coded messages indicate success (green), errors (red), or warnings (orange)
+- Progress updates show each step of the extraction process
+- Error codes and detailed descriptions help diagnose issues
 
-### Database Format
-
-**Location**: `sd:/config/wb_db.txt`
-
-**Format**: 
-```
-# Comments start with #
-FIRMWARE_VERSION=FUSE_COUNT
-
-# Example:
-0x1500=22
-0x1400=21
-0x1300=20
-```
-
-**Notes**:
-- All values are in hexadecimal (0x prefix required)
-- Entries should be sorted in descending order by firmware version
-- Lines starting with `#` are treated as comments
-- If database file is missing, tool falls back to hardcoded database
-
-### Example Database
-```
-0x1500=22   # 21.0.0+
-0x1400=21   # 20.0.0+
-0x1300=20   # 19.0.0+
-0x1100=19   # 17.0.0+
-0x1000=18   # 16.0.0+
-```
-
-### Updating for New Firmware
-
-When Nintendo releases a new firmware that burns fuses:
-1. Determine the new fuse requirement from the official changelog or community sources
-2. Use the included `generate_fw_hex.bat` script to calculate the hex value:
-   - Run the script and enter the firmware version (e.g., 22.0.0)
-   - Script outputs the hex code (e.g., 0x1600=FUSE_COUNT)
-3. Add the generated entry to `sd:/config/wb_db.txt` with the actual fuse count
-4. Restart the tool - **no recompilation needed!**
-
-**Example using the batch script:**
-```
-> generate_fw_hex.bat
-Firmware version: 22.0.0
-Result: 0x1600=FUSE_COUNT
-
-Add to wb_db.txt: 0x1600=23
-```
+### User Controls
+- **Power Button**: Immediately powers off the console
+- **Vol- Button**: Returns to Hekate (via bootloader/update.bin or payload.bin)
+- **3-Finger Touch**: Captures screenshot to SD card (BMP format)
 
 ## Technical Details
 
@@ -356,11 +346,20 @@ BOOT0 Partition:
 └── 0x140000: Rest of BOOT0
 ```
 
+### Return to Hekate Mechanism
+
+When Vol- is pressed, the tool attempts to launch payloads in this order:
+1. `sd:/bootloader/update.bin` (Hekate's standard location)
+2. `sd:/payload.bin` (fallback generic payload)
+3. If no payload found, performs a reboot (POWER_OFF_REBOOT)
+
+This ensures the tool gracefully returns to your bootloader environment.
+
 ## Based On
 
-- **Atmosphère**: fusee_setup_horizon.cpp (warmboot extraction logic)
-- **FuseCheck**: Display framework and BDK library
-- **Hekate**: BDK (Board Development Kit)
+- **Atmosphère**: fusee_setup_horizon.cpp (warmboot extraction logic and caching mechanism)
+- **FuseCheck**: Display framework, UI layout, and BDK integration
+- **Hekate**: BDK (Board Development Kit) for hardware initialization
 
 ## License
 
