@@ -1,0 +1,32 @@
+# Warmboot Extractor Firmware-to-Fuse Database
+# Format: FIRMWARE_VERSION=FUSE_COUNT
+# Firmware versions in hex (e.g., 0x1500 = 21.0.0)
+# Copy to sd:/config/wb_db.txt to override built-in database
+# 
+# This database maps Nintendo Switch firmware versions to their required fuse counts.
+# When a new firmware is released that burns fuses, simply update this file
+# and restart the tool - no recompilation needed!
+
+# Firmware -> Fuse Count Mapping (sorted descending by version)
+0x1500=22
+0x1400=21
+0x1300=20
+0x1100=19
+0x1000=18
+0x0F00=17
+0x0D21=16
+0x0C02=15
+0x0B00=14
+0x0A00=13
+0x0910=12
+0x0900=11
+0x0810=10
+0x0700=9
+0x0620=8
+0x0600=7
+0x0500=6
+0x0400=5
+0x0302=4
+0x0300=3
+0x0200=2
+0x0100=1

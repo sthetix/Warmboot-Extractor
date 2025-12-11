@@ -1,0 +1,41 @@
+# Build artifacts
+build/
+output/
+*.o
+*.elf
+*.bin
+*.lst
+*.map
+*.d
+*.log
+
+# Compiled tools
+tools/lz/lz77
+tools/lz/lz77.exe
+tools/bin2c/bin2c
+tools/bin2c/bin2c.exe
+
+# Payload headers (generated)
+loader/payload_00.h
+loader/payload_01.h
+loader/*.bin
+loader/*.elf
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*_unc.bin
+payload_00
+payload_01
+
+# OS specific
+Thumbs.db
+desktop.ini

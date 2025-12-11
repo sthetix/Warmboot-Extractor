@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(make clean:*)",
+      "Bash(export DEVKITPRO=/c/devkitPro)",
+      "Bash(export DEVKITARM=/c/devkitPro/devkitARM:*)",
+      "Bash(bash -c \"export DEVKITPRO=/c/devkitPro && export DEVKITARM=/c/devkitPro/devkitARM && make clean\")",
+      "Bash(bash:*)",
+      "Bash(make:*)",
+      "Bash(tee:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
