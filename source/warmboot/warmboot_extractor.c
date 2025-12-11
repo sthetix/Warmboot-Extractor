@@ -22,6 +22,7 @@
 #include <utils/util.h>
 #include <sec/se.h>
 #include <storage/sdmmc.h>
+#include <storage/nx_sd.h>
 
 // Mariko keyslot for BEK (Boot Encryption Key)
 #define KS_MARIKO_BEK 13
