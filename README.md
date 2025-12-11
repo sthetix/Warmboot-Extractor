@@ -25,7 +25,7 @@ This tool is essential when:
 
 **This tool is NOT needed once new Atmosphère is released!**
 
-- Atmosphère release timing varies and **cannot be predicted** (no ETA - don't wait at home!)
+- Atmosphère release timing varies and **cannot be predicted** (no ETA)
 - New Atmosphère automatically extracts and caches warmboot using the same logic this tool uses
 - **Use this tool only as a temporary solution** while waiting for the official Atmosphère update
 - Once you update to the latest Atmosphère, it will handle warmboot caching automatically

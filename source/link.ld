@@ -10,9 +10,11 @@ SECTIONS {
 		*(.text._irq_setup);
 		*(.text*);
 	}
+	.rodata : {
+		*(.rodata*);
+	}
 	.data : {
 		*(.data*);
-		*(.rodata*);
 	}
 	. = ALIGN(0x10);
 	__ipl_end = .;
@@ -22,4 +24,7 @@ SECTIONS {
 		*(.bss*)
 		__bss_end = .;
 	}
+	. = ALIGN(0x10);
+	__end__ = .;
+	PROVIDE(end = .);
 }
