@@ -58,7 +58,7 @@ TOOLS := $(TOOLSLZ) $(TOOLSB2C)
 
 ################################################################################
 
-.PHONY: all clean $(LDRDIR) $(TOOLS)
+.PHONY: all clean release $(LDRDIR) $(TOOLS)
 
 all: $(OUTPUTDIR)/$(TARGET).bin $(LDRDIR)
 	@echo "--------------------------------------"
@@ -90,7 +90,9 @@ $(LDRDIR): $(OUTPUTDIR)/$(TARGET).bin
 	@$(MAKE) --no-print-directory -C $@ $(MAKECMDGOALS) -$(MAKEFLAGS) PAYLOAD_NAME=$(TARGET)
 
 $(TOOLS):
-	@$(MAKE) --no-print-directory -C $@ $(MAKECMDGOALS) -$(MAKEFLAGS)
+	@if [ "$(MAKECMDGOALS)" != "release" ]; then \
+		$(MAKE) --no-print-directory -C $@ $(MAKECMDGOALS) -$(MAKEFLAGS); \
+	fi
 
 $(OUTPUTDIR)/$(TARGET).bin: $(BUILDDIR)/$(TARGET)/$(TARGET).elf $(TOOLS)
 	@mkdir -p "$(@D)"
@@ -119,3 +121,15 @@ $(BUILDDIR)/$(TARGET)/%.o: $(BDKDIR)/%.S
 	@mkdir -p "$(@D)"
 	@echo Building $@
 	@$(CC) $(CFLAGS) -c $< -o $@
+
+release: $(OUTPUTDIR)/$(TARGET).bin
+	@echo "Creating release package..."
+	@eval VERSION="$$(echo $(LPVERSION_MAJOR).$(LPVERSION_MINOR).$(LPVERSION_BUGFX))"; \
+		rm -rf release && \
+		mkdir -p release/bootloader/payloads && \
+		cp $(OUTPUTDIR)/$(TARGET).bin release/bootloader/payloads/ && \
+		cd release && \
+		zip -r ../releases/Warmboot-Extractor-$${VERSION}.zip . && \
+		cd .. && \
+		rm -rf release
+	@echo "Release created: releases/Warmboot-Extractor-$(LPVERSION_MAJOR).$(LPVERSION_MINOR).$(LPVERSION_BUGFX).zip"

@@ -329,7 +329,7 @@ cleanup_exit:
 wait_exit:
     // Footer
     SETCOLOR(COLOR_RED, COLOR_DEFAULT);
-    print_centered(680, "Power: Turn Off | Vol-: Back to Hekate | 3-Finger: Screenshot");
+    print_centered(680, "Power: Back to Hekate | 3-Finger: Screenshot");
     RESETCOLOR;
 
     // Initialize touchscreen for 3-finger screenshot support
@@ -402,15 +402,8 @@ wait_exit:
             continue;
         }
 
-        // Power button: Turn off
+        // Power button: Back to Hekate
         if (btn & BTN_POWER)
-        {
-            power_set_state(POWER_OFF);
-            while (true) bpmp_halt();
-        }
-
-        // Vol- button: Back to Hekate
-        if (btn & BTN_VOL_DOWN)
         {
             break;
         }
