@@ -28,9 +28,23 @@
 #define KS_MARIKO_BEK 13
 
 // Helper function to check if this is Mariko hardware
+// Uses hardware type detection from ODM4 fuse bits (like Atmosphere)
+// to avoid dependency on hw_get_chip_id() which can fail on some units
 bool is_mariko(void) {
-    // Check SoC ID register to determine if Mariko
-    // Mariko has different SoC revision (DRAM ID >= 4)
+    u32 odm4 = fuse_read_odm(4);
+
+    // Extract hardware type from ODM4 bits (same logic as Atmosphere fuse_api.cpp)
+    // HardwareType1 (bit 2), HardwareType2 (bit 8), HardwareType3 (bits 16-19)
+    u32 hw_type = ((odm4 >> 2) & 1) | (((odm4 >> 8) & 1) << 1) | (((odm4 >> 16) & 0xF) << 2);
+
+    // Mariko hardware types: Iowa (0x04), Hoag (0x08), Calcio (0x02 on Mariko), Aula (0x10)
+    // Erista hardware types: Icosa (0x01), Copper (0x02 on Erista)
+    // Note: 0x02 is ambiguous (Calcio=Copper), but DRAM ID >= 4 indicates Mariko
+    if (hw_type == 0x04 || hw_type == 0x08 || hw_type == 0x10)  // Iowa, Hoag, Aula
+        return true;
+    if (hw_type == 0x01)  // Icosa
+        return false;
+    // For 0x02 (Calcio/Copper), fall back to DRAM ID check
     return (fuse_read_dramid(false) >= 4);
 }
 
