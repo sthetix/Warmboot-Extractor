@@ -14,30 +14,34 @@ This tool extracts the warmboot firmware from your Mariko Switch's Package1 (sto
 
 ## When to Use This Tool
 
-This tool is essential when:
-- **SysMMC/OFW Updated**: Your system firmware (SysMMC) or OFW is updated to the latest firmware, burning console fuses
-- **Atmosphere Out of Date**: At that time, Atmosphere needs an update from the developer but hasn't been released yet
-- **eMMC Warmboot Error**: Your eMMC encounters the error: `Failed to match warm boot with fuses!`
-- **Sleep Mode Broken**: Continuing without this tool causes eMMC to lose sleep mode functionality
-- **Bridging the Gap**: Extract warmboot from SysMMC/OFW and use it in eMMC to resolve the mismatch and continue using eMMC without waiting for an Atmosphere update
+This tool is essential only when all of the following are true at the same time:
+- **SysNAND Updated**: Your system firmware was updated to a new version, burning new console fuses
+- **No New Hekate**: A new hekate release has not been published yet — hekate ships an updated `sc7exit_b01.bin` with every release that handles its own warmboot fuse mismatch internally
+- **No New Atmosphère**: A new Atmosphère release has not been published yet — new Atmosphère handles warmboot caching automatically on its own
+- **Sleep Mode Broken**: emuMMC loses sleep mode functionality due to the fuse mismatch
+- **eMMC Warmboot Error**: eMMC encounters the error: `Failed to match warm boot with fuses!`
+
+This tool bridges the gap between a sysNAND firmware update and the release of updated hekate or Atmosphère, whichever comes first.
 
 ### Important Note
 
-**This tool is NOT needed once new Atmosphère is released!**
+**This tool is NOT needed once either new hekate or new Atmosphère is released.**
 
-- Atmosphère release timing varies and **cannot be predicted** (no ETA)
-- New Atmosphère automatically extracts and caches warmboot using the same logic this tool uses
-- **Use this tool only as a temporary solution** while waiting for the official Atmosphère update
-- Once you update to the latest Atmosphère, it will handle warmboot caching automatically
+Both projects handle the warmboot fuse mismatch independently through different paths:
+- New hekate ships an updated `sc7exit_b01.bin` under `bootloader/sys/l4t/` which it uses directly when burnt fuses exceed the firmware's expected fuse count. This is bundled with every hekate release.
+- New Atmosphère automatically extracts and caches warmboot using the same logic this tool uses.
+
+Updating either one is sufficient to restore sleep mode on emuMMC. Release timing for both varies and cannot be predicted, so this tool exists as an immediate solution while waiting.
 
 **When to use this tool:**
-- You updated sysNAND and need sleep mode on emuMMC immediately
-- Official Atmosphère update hasn't been released yet
-- You want to continue using emuMMC without waiting
+- sysNAND was updated and new fuses were burnt
+- Neither a new hekate nor a new Atmosphère release is available yet
+- You need sleep mode on emuMMC immediately and cannot wait
 
 **When NOT to use this tool:**
-- New Atmosphère version is already available - just update Atmosphère instead
-- You can wait a few days for the official release
+- New hekate is already available — update hekate, its bundled `sc7exit_b01.bin` handles it
+- New Atmosphère is already available — update Atmosphère, it handles warmboot caching automatically
+- You can wait for either official release
 - You don't use sleep mode on emuMMC
 
 ## Features
@@ -195,9 +199,15 @@ The `output/Warmboot_Extractor.bin` file is the payload you copy to your SD card
 
 ### Why This Works
 
-**Atmosphère's Warmboot Caching Logic:**
+**Two separate warmboot paths exist — this tool targets Atmosphère's path only.**
 
-When Atmosphère detects a fuse count mismatch (burnt fuses > expected fuses), it searches for cached warmboot files:
+Hekate and Atmosphère each resolve the warmboot fuse mismatch independently:
+
+**Hekate's path** (handled internally, does not use `warmboot_mariko/`):
+When burnt fuses exceed the firmware's expected fuse count, hekate loads `bootloader/sys/l4t/sc7exit_b01.bin` from the SD card — a binary that is bundled and updated with every hekate release. Hekate never reads from `warmboot_mariko/` in this case.
+
+**Atmosphère's path** (what this tool populates):
+When Atmosphère detects a fuse count mismatch (burnt fuses > expected fuses), it searches for cached warmboot files in `warmboot_mariko/`:
 
 ```cpp
 // If burnt fuses > expected, search cache for compatible version
@@ -211,11 +221,12 @@ if (burnt_fuses > expected_fuses) {
 }
 ```
 
-**The key insight**: Atmosphère will use a cached warmboot if:
+This tool pre-populates that cache using the current burnt fuse count so old Atmosphère can find it:
 - Burnt fuses (22) > firmware's expected fuses (19)
 - Cached warmboot exists for **burnt fuse count** (not expected fuses)
-- This tool pre-populates that cache using the **current burnt fuse count**
 - Naming by burnt fuses ensures the file is found during Atmosphère's search loop
+
+This is why updating hekate alone is also sufficient — hekate's sc7exit_b01.bin path is completely separate from the `warmboot_mariko/` cache and does not depend on Atmosphère's caching logic at all.
 
 ### Troubleshooting
 
@@ -253,9 +264,9 @@ if (burnt_fuses > expected_fuses) {
 - emuMMC's old BOOT0 has old warmboot (which doesn't work with new fuse count)
 
 **Does fix:**
-- Sleep mode on emuMMC with old Atmosphère after sysNAND update
-- Eliminates waiting for Atmosphère devs just for warmboot cache
-- Provides immediate solution while waiting for official Atmosphère release
+- Sleep mode on emuMMC when both hekate and Atmosphère are outdated after a sysNAND update
+- Eliminates waiting for both teams to push updates simultaneously
+- Provides an immediate solution during the window between a firmware release and the first updated hekate or Atmosphère release
 
 ## Display Information
 
