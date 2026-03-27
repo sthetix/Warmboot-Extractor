@@ -16,32 +16,32 @@ This tool extracts the warmboot firmware from your Mariko Switch's Package1 (sto
 
 This tool is essential only when all of the following are true at the same time:
 - **SysNAND Updated**: Your system firmware was updated to a new version, burning new console fuses
-- **No New Hekate**: A new hekate release has not been published yet — hekate ships an updated `sc7exit_b01.bin` with every release that handles its own warmboot fuse mismatch internally
 - **No New Atmosphère**: A new Atmosphère release has not been published yet — new Atmosphère handles warmboot caching automatically on its own
 - **Sleep Mode Broken**: emuMMC loses sleep mode functionality due to the fuse mismatch
 - **eMMC Warmboot Error**: eMMC encounters the error: `Failed to match warm boot with fuses!`
 
-This tool bridges the gap between a sysNAND firmware update and the release of updated hekate or Atmosphère, whichever comes first.
+This tool bridges the gap between a sysNAND firmware update and the release of updated Atmosphère.
 
 ### Important Note
 
-**This tool is NOT needed once either new hekate or new Atmosphère is released.**
+**This tool targets Atmosphère's warmboot path only — it does NOT fix Hekate's internal boot path.**
 
-Both projects handle the warmboot fuse mismatch independently through different paths:
-- New hekate ships an updated `sc7exit_b01.bin` under `bootloader/sys/l4t/` which it uses directly when burnt fuses exceed the firmware's expected fuse count. This is bundled with every hekate release.
-- New Atmosphère automatically extracts and caches warmboot using the same logic this tool uses.
+This is a critical distinction:
+- **Atmosphère (fusee.bin)**: Uses cached warmboot files from `sd:/warmboot_mariko/wb_XX.bin`. This tool populates that cache. Even an older Atmosphère fusee.bin will find and use the extracted file.
+- **Hekate (as standalone bootloader)**: Has its own internal warmboot path using `bootloader/sys/l4t/sc7exit_b01.bin`. It does **not** read from `warmboot_mariko/`. If Hekate does not support the new firmware, it will show `Failed to match warm boot with fuses!` regardless of whether this tool has run.
 
-Updating either one is sufficient to restore sleep mode on emuMMC. Release timing for both varies and cannot be predicted, so this tool exists as an immediate solution while waiting.
+**In short:** if you chainload Atmosphère fusee.bin through Hekate, this tool works. If you rely on Hekate alone (without Atmosphère), this tool cannot help — you need a Hekate update.
 
 **When to use this tool:**
 - sysNAND was updated and new fuses were burnt
-- Neither a new hekate nor a new Atmosphère release is available yet
+- No new Atmosphère release is available yet
+- You boot via Atmosphère fusee.bin (chainloaded through Hekate or injected directly)
 - You need sleep mode on emuMMC immediately and cannot wait
 
 **When NOT to use this tool:**
-- New hekate is already available — update hekate, its bundled `sc7exit_b01.bin` handles it
 - New Atmosphère is already available — update Atmosphère, it handles warmboot caching automatically
-- You can wait for either official release
+- You boot exclusively via Hekate without Atmosphère — update Hekate instead
+- You can wait for an official Atmosphère release
 - You don't use sleep mode on emuMMC
 
 ## Features
@@ -154,14 +154,14 @@ The `output/Warmboot_Extractor.bin` file is the payload you copy to your SD card
 **Example: Firmware 21.x.x → 22.0.0**
 
 **Before update:**
-- sysNAND: 21.0.0 (21 fuses burnt)
-- emuMMC: 19.0.0 (old Atmosphère 1.7.0)
+- sysNAND: 21.0.0 (22 fuses burnt)
+- emuMMC: running old Atmosphère
 - Sleep works fine on emuMMC
 
 **After sysNAND update to 22.0.0:**
-- sysNAND: 22.0.0 (22 fuses burnt)
-- emuMMC: Still 19.0.0
-- Sleep broken - no warmboot cache for fuse count 22
+- sysNAND: 22.0.0 (23 fuses burnt — new fuse burned)
+- emuMMC: Still on old Atmosphère
+- Sleep broken — no warmboot cache for fuse count 23
 
 **Solution:**
 
@@ -176,26 +176,28 @@ The `output/Warmboot_Extractor.bin` file is the payload you copy to your SD card
 
    System Information:
        SoC Type: Mariko (T210B01)
-       Burnt Fuses: 22 fuses
+       Burnt Fuses: 23 fuses
 
    [*] Extracting warmboot firmware from Package1...
    [*] Warmboot extracted successfully!
 
    Warmboot Information:
        Size: 0xE80 (3712 bytes)
-       Target Firmware: 0x1600 (2024/10/15)
+       Target Firmware: 0x1600 (2026/01/23)
 
    [*] Saving warmboot to SD card...
-       Filename: wb_16.bin
+       Filename: wb_17.bin
    [*] Warmboot saved successfully!
 
    Power: Turn Off | Vol-: Back to Hekate | 3-Finger: Screenshot
    ```
 
-3. **Boot emuMMC with old Atmosphère**:
-   - Old Atmosphère looks for warmboot cache
-   - Finds `wb_16.bin` (22 fuses = 0x16 hex)
+3. **Boot emuMMC with old Atmosphère fusee.bin**:
+   - Old Atmosphère looks for warmboot cache starting from burnt fuse count
+   - Finds `wb_17.bin` (23 fuses = 0x17 hex)
    - Sleep mode works!
+
+> **Note**: If you see `Failed to match warm boot with fuses!` after running this tool, you are booting via **Hekate directly** without Atmosphère. This tool only fixes the Atmosphère path — boot via `fusee.bin` instead.
 
 ### Why This Works
 
@@ -229,6 +231,11 @@ This tool pre-populates that cache using the current burnt fuse count so old Atm
 This is why updating hekate alone is also sufficient — hekate's sc7exit_b01.bin path is completely separate from the `warmboot_mariko/` cache and does not depend on Atmosphère's caching logic at all.
 
 ### Troubleshooting
+
+**`Failed to match warm boot with fuses!` after running this tool**
+- **Cause**: You are booting via Hekate directly — Hekate does not use `warmboot_mariko/` cache at all
+- **Fix**: Boot via Atmosphère `fusee.bin` instead of relying on Hekate's internal boot path
+- **Note**: This tool only populates Atmosphère's warmboot cache. Hekate requires its own update to handle new firmware fuse counts
 
 **"Failed to extract warmboot"**
 - **Cause**: Unable to access BOOT0 or corrupted Package1
@@ -317,7 +324,8 @@ IRAM Physical:
 | 8          | 0x08 | 6.2.0             |
 | 14         | 0x0E | 11.0.0 - 12.0.1   |
 | 21         | 0x15 | 20.0.0 - 20.5.0   |
-| 22         | 0x16 | 21.0.0+           |
+| 22         | 0x16 | 21.0.0 - 21.2.0   |
+| 23         | 0x17 | 22.0.0            |
 
 ### Fuse Count Calculation
 
