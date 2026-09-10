@@ -26,6 +26,7 @@
 
 // Mariko keyslot for BEK (Boot Encryption Key)
 #define KS_MARIKO_BEK 13
+#define L4T_FIRMWARE_REV 0x37524556 // "VER7"
 
 // Helper function to check if this is Mariko hardware
 // Uses hardware type detection from ODM4 fuse bits (like Atmosphere)
@@ -416,4 +417,58 @@ bool save_warmboot_to_sd(const warmboot_info_t *wb_info, const char *path) {
 
     // Verify write succeeded
     return (bytes_written == wb_info->size);
+}
+
+// Save Hekate's Mariko SC7-Exit wrapper: fuse count + warmboot + L4T revision.
+bool save_sc7exit_to_sd(const warmboot_info_t *wb_info, const char *path) {
+    if (!wb_info || !wb_info->data || !path || wb_info->is_erista)
+        return false;
+
+    const char *temp_path = "sd:/bootloader/sys/l4t/sc7exit_b01.bin.new";
+    const char *backup_path = "sd:/bootloader/sys/l4t/sc7exit_b01.bin.bak";
+    u32 fuse_count = wb_info->burnt_fuses;
+    u32 revision = L4T_FIRMWARE_REV;
+    FIL fp;
+    FILINFO file_info;
+    UINT bytes_written;
+    bool success;
+
+    f_mkdir("sd:/bootloader");
+    f_mkdir("sd:/bootloader/sys");
+    f_mkdir("sd:/bootloader/sys/l4t");
+
+    if (f_open(&fp, temp_path, FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)
+        return false;
+
+    success = f_write(&fp, &fuse_count, sizeof(fuse_count), &bytes_written) == FR_OK &&
+              bytes_written == sizeof(fuse_count);
+    if (success)
+        success = f_write(&fp, wb_info->data, wb_info->size, &bytes_written) == FR_OK &&
+                  bytes_written == wb_info->size;
+    if (success)
+        success = f_write(&fp, &revision, sizeof(revision), &bytes_written) == FR_OK &&
+                  bytes_written == sizeof(revision);
+
+    f_close(&fp);
+
+    if (!success) {
+        f_unlink(temp_path);
+        return false;
+    }
+
+    if (f_stat(path, &file_info) == FR_OK) {
+        if (f_stat(backup_path, &file_info) != FR_OK) {
+            if (f_rename(path, backup_path) != FR_OK)
+                return false;
+        } else if (f_unlink(path) != FR_OK) {
+            return false;
+        }
+    }
+
+    if (f_rename(temp_path, path) == FR_OK)
+        return true;
+
+    if (f_stat(path, &file_info) != FR_OK)
+        f_rename(backup_path, path);
+    return false;
 }

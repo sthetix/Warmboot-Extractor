@@ -76,6 +76,7 @@ typedef enum {
 wb_extract_error_t extract_warmboot_from_pkg1_ex(warmboot_info_t *wb_info);
 bool extract_warmboot_from_pkg1(warmboot_info_t *wb_info);
 bool save_warmboot_to_sd(const warmboot_info_t *wb_info, const char *path);
+bool save_sc7exit_to_sd(const warmboot_info_t *wb_info, const char *path);
 u8 get_burnt_fuses(void);
 bool is_mariko(void);
 void get_warmboot_path(char *path, size_t path_size, u8 fuse_count);

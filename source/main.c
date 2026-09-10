@@ -156,21 +156,12 @@ void print_centered(int y, const char *text) {
 
 // Print header
 void print_header(void) {
+    char title[64];
+
     gfx_clear_grey(0x1B);
-    gfx_con_setpos(0, 0);
-
-    SETCOLOR(COLOR_CYAN, COLOR_DEFAULT);
-    print_centered(30, "WARMBOOT EXTRACTOR");
-    RESETCOLOR;
-
-    // Display version centered below title
-    char version_str[32];
-    s_printf(version_str, "v%d.%d.%d", LP_VER_MJ, LP_VER_MN, LP_VER_BF);
-    SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-    print_centered(70, version_str);
-    RESETCOLOR;
-
-    gfx_printf("\n");
+    s_printf(title, "[Warmboot Extractor v%d.%d.%d]", LP_VER_MJ, LP_VER_MN, LP_VER_BF);
+    gfx_draw_title_bar(title);
+    gfx_draw_bottom_bar("Power: Back to Hekate   3-Finger: Screenshot");
 }
 
 // Print status message with coordinate positioning
@@ -202,7 +193,7 @@ void warmboot_extraction_workflow(void) {
     print_header();
 
     // Display system information
-    int y_pos = 148;
+    int y_pos = 64;
     SETCOLOR(COLOR_CYAN, COLOR_DEFAULT);
     gfx_con_setpos(251, y_pos);
     gfx_printf("System Information:");
@@ -319,7 +310,19 @@ void warmboot_extraction_workflow(void) {
     }
 
     print_status(251, y_pos, "Warmboot saved successfully!", COLOR_GREEN);
-    y_pos += 48;
+    y_pos += 32;
+
+    print_status(251, y_pos, "Saving Hekate SC7-Exit firmware...", COLOR_WHITE);
+    y_pos += 32;
+
+    if (!save_sc7exit_to_sd(&wb_info, "sd:/bootloader/sys/l4t/sc7exit_b01.bin")) {
+        print_status(251, y_pos, "Failed to save sc7exit_b01.bin!", COLOR_RED);
+        goto cleanup_exit;
+    }
+
+    print_status(251, y_pos, "sc7exit_b01.bin saved successfully!", COLOR_GREEN);
+    y_pos += 32;
+    print_info(251, y_pos, "Hekate File", "bootloader/sys/l4t/sc7exit_b01.bin");
 
 cleanup_exit:
     // Free warmboot data
@@ -327,11 +330,6 @@ cleanup_exit:
         free(wb_info.data);
 
 wait_exit:
-    // Footer
-    SETCOLOR(COLOR_RED, COLOR_DEFAULT);
-    print_centered(680, "Power: Back to Hekate | 3-Finger: Screenshot");
-    RESETCOLOR;
-
     // Initialize touchscreen for 3-finger screenshot support
     touch_power_on();
 

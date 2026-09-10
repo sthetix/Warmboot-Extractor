@@ -87,12 +87,10 @@ $(LDRDIR): $(OUTPUTDIR)/$(TARGET).bin
 	@$(TOOLSB2C)/bin2c payload_01 > $(LDRDIR)/payload_01.h
 	@rm payload_00
 	@rm payload_01
-	@$(MAKE) --no-print-directory -C $@ $(MAKECMDGOALS) -$(MAKEFLAGS) PAYLOAD_NAME=$(TARGET)
+	@$(MAKE) --no-print-directory -C $@ $(if $(filter release,$(MAKECMDGOALS)),all,$(MAKECMDGOALS)) -$(MAKEFLAGS) PAYLOAD_NAME=$(TARGET)
 
 $(TOOLS):
-	@if [ "$(MAKECMDGOALS)" != "release" ]; then \
-		$(MAKE) --no-print-directory -C $@ $(MAKECMDGOALS) -$(MAKEFLAGS); \
-	fi
+	@$(MAKE) --no-print-directory -C $@ $(if $(filter release,$(MAKECMDGOALS)),all,$(MAKECMDGOALS)) -$(MAKEFLAGS)
 
 $(OUTPUTDIR)/$(TARGET).bin: $(BUILDDIR)/$(TARGET)/$(TARGET).elf $(TOOLS)
 	@mkdir -p "$(@D)"
@@ -122,14 +120,11 @@ $(BUILDDIR)/$(TARGET)/%.o: $(BDKDIR)/%.S
 	@echo Building $@
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-release: $(OUTPUTDIR)/$(TARGET).bin
-	@echo "Creating release package..."
-	@eval VERSION="$$(echo $(LPVERSION_MAJOR).$(LPVERSION_MINOR).$(LPVERSION_BUGFX))"; \
-		rm -rf release && \
-		mkdir -p release/bootloader/payloads && \
-		cp $(OUTPUTDIR)/$(TARGET).bin release/bootloader/payloads/ && \
-		cd release && \
-		zip -r ../releases/Warmboot-Extractor-$${VERSION}.zip . && \
-		cd .. && \
-		rm -rf release
-	@echo "Release created: releases/Warmboot-Extractor-$(LPVERSION_MAJOR).$(LPVERSION_MINOR).$(LPVERSION_BUGFX).zip"
+release: all
+	@echo "Creating release zip..."
+	@rm -rf $(OUTPUTDIR)/zip_tmp
+	@mkdir -p $(OUTPUTDIR)/zip_tmp/bootloader/payloads
+	@cp $(OUTPUTDIR)/$(TARGET).bin $(OUTPUTDIR)/zip_tmp/bootloader/payloads/
+	@cd $(OUTPUTDIR)/zip_tmp && zip -r ../$(TARGET)-$(LPVERSION_MAJOR).$(LPVERSION_MINOR).$(LPVERSION_BUGFX).zip .
+	@rm -rf $(OUTPUTDIR)/zip_tmp
+	@echo "Release zip created: $(OUTPUTDIR)/$(TARGET)-$(LPVERSION_MAJOR).$(LPVERSION_MINOR).$(LPVERSION_BUGFX).zip"

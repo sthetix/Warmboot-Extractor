@@ -585,3 +585,41 @@ void gfx_render_bmp_argb(const u32 *buf, u32 size_x, u32 size_y, u32 pos_x, u32 
 			gfx_ctxt.fb[x + y * gfx_ctxt.stride] = buf[(size_y + pos_y - 1 - y ) * size_x + x - pos_x];
 	}
 }
+
+void gfx_draw_title_bar(const char *title)
+{
+	u8 saved_fillbg = gfx_con.fillbg;
+	u32 saved_bgcol = gfx_con.bgcol;
+	u32 saved_fgcol = gfx_con.fgcol;
+
+	for (u32 y = 0; y < 1280; y++)
+		for (u32 x = 0; x < 16; x++)
+			gfx_ctxt.fb[x + y * gfx_ctxt.stride] = 0xFF3D3D3D;
+
+	gfx_con_setcol(0xFF00D8FF, 1, 0xFF3D3D3D);
+	gfx_con_setpos(0, 0);
+	gfx_printf("%s", title);
+
+	gfx_con.fillbg = saved_fillbg;
+	gfx_con.bgcol = saved_bgcol;
+	gfx_con.fgcol = saved_fgcol;
+}
+
+void gfx_draw_bottom_bar(const char *legend)
+{
+	u8 saved_fillbg = gfx_con.fillbg;
+	u32 saved_bgcol = gfx_con.bgcol;
+	u32 saved_fgcol = gfx_con.fgcol;
+
+	for (u32 y = 0; y < 1280; y++)
+		for (u32 x = 704; x < 720; x++)
+			gfx_ctxt.fb[x + y * gfx_ctxt.stride] = 0xFF3D3D3D;
+
+	gfx_con_setcol(0xFF00D8FF, 1, 0xFF3D3D3D);
+	gfx_con_setpos(0, 704);
+	gfx_printf("%s", legend);
+
+	gfx_con.fillbg = saved_fillbg;
+	gfx_con.bgcol = saved_bgcol;
+	gfx_con.fgcol = saved_fgcol;
+}

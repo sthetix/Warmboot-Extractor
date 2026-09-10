@@ -24,13 +24,15 @@ This tool bridges the gap between a sysNAND firmware update and the release of u
 
 ### Important Note
 
-**This tool targets Atmosphère's warmboot path only — it does NOT fix Hekate's internal boot path.**
+**This tool creates warmboot files for both Atmosphère and Hekate.**
 
 This is a critical distinction:
-- **Atmosphère (fusee.bin)**: Uses cached warmboot files from `sd:/warmboot_mariko/wb_XX.bin`. This tool populates that cache. Even an older Atmosphère fusee.bin will find and use the extracted file.
-- **Hekate (as standalone bootloader)**: Has its own internal warmboot path using `bootloader/sys/l4t/sc7exit_b01.bin`. It does **not** read from `warmboot_mariko/`. If Hekate does not support the new firmware, it will show `Failed to match warm boot with fuses!` regardless of whether this tool has run.
+- **Atmosphère (fusee.bin)**: Uses cached warmboot files from `sd:/warmboot_mariko/wb_XX.bin`.
+- **Hekate (as standalone bootloader)**: Uses `sd:/bootloader/sys/l4t/sc7exit_b01.bin`. The tool wraps the same extracted Mariko warmboot with Hekate's fuse header and `VER7` footer.
 
-**In short:** if you chainload Atmosphère fusee.bin through Hekate, this tool works. If you rely on Hekate alone (without Atmosphère), this tool cannot help — you need a Hekate update.
+If an existing Hekate SC7-Exit file is present, the first replacement preserves it as `sc7exit_b01.bin.bak`.
+
+**In short:** the tool updates both warmboot paths. A full Hekate or Atmosphère update may still be required if a new firmware changes anything beyond warmboot compatibility.
 
 **When to use this tool:**
 - sysNAND was updated and new fuses were burnt
@@ -55,7 +57,7 @@ This is a critical distinction:
 ## How It Works
 
 ### Mariko Warmboot Extraction:
-The tool extracts warmboot from Package1 and creates a cache file **used by Atmosphère**:
+The tool extracts warmboot from Package1 and creates files for **Atmosphère and Hekate**:
 1. Initializes hardware and display in horizontal mode (1280x720)
 2. Detects SoC type (Mariko T210B01 or Erista T210)
 3. Displays system information (SoC type and burnt fuse count)
@@ -65,7 +67,8 @@ The tool extracts warmboot from Package1 and creates a cache file **used by Atmo
    - Extracts warmboot firmware (validated 0x800-0x1000 bytes)
    - Reads burnt fuse count from ODM6/ODM7 fuse registers
    - Displays target firmware version from Package1 metadata
-   - Saves to `sd:/warmboot_mariko/wb_XX.bin` based on burnt fuse count
+   - Saves `sd:/warmboot_mariko/wb_XX.bin` for Atmosphère
+   - Saves `sd:/bootloader/sys/l4t/sc7exit_b01.bin` for Hekate
 5. For Erista consoles:
    - Displays message that extraction is not needed
    - Skips extraction (Atmosphère uses embedded warmboot)
@@ -145,9 +148,9 @@ The `output/Warmboot_Extractor.bin` file is the payload you copy to your SD card
    - Vol- button: Return to Hekate
    - Three-finger touch: Take screenshot (saved to SD card)
 
-5. **Check SD card** for extracted warmboot cache files:
-   - Location: `sd:/warmboot_mariko/`
-   - Files: `wb_XX.bin` where XX = fuse count in lowercase hex
+5. **Check SD card** for the generated warmboot files:
+   - Atmosphère: `sd:/warmboot_mariko/wb_XX.bin`, where XX is the fuse count in lowercase hex
+   - Hekate: `sd:/bootloader/sys/l4t/sc7exit_b01.bin`
 
 ### Detailed Usage Scenario
 
@@ -188,6 +191,8 @@ The `output/Warmboot_Extractor.bin` file is the payload you copy to your SD card
    [*] Saving warmboot to SD card...
        Filename: wb_17.bin
    [*] Warmboot saved successfully!
+   [*] Saving Hekate SC7-Exit firmware...
+   [*] sc7exit_b01.bin saved successfully!
 
    Power: Turn Off | Vol-: Back to Hekate | 3-Finger: Screenshot
    ```
@@ -201,14 +206,14 @@ The `output/Warmboot_Extractor.bin` file is the payload you copy to your SD card
 
 ### Why This Works
 
-**Two separate warmboot paths exist — this tool targets Atmosphère's path only.**
+**Two separate warmboot paths exist — this tool now populates both.**
 
 Hekate and Atmosphère each resolve the warmboot fuse mismatch independently:
 
-**Hekate's path** (handled internally, does not use `warmboot_mariko/`):
-When burnt fuses exceed the firmware's expected fuse count, hekate loads `bootloader/sys/l4t/sc7exit_b01.bin` from the SD card — a binary that is bundled and updated with every hekate release. Hekate never reads from `warmboot_mariko/` in this case.
+**Hekate's path** (does not use `warmboot_mariko/`):
+When burnt fuses exceed the firmware's expected fuse count, Hekate loads `bootloader/sys/l4t/sc7exit_b01.bin`. This tool generates that wrapper from the extracted warmboot, the current burnt fuse count, and Hekate's `VER7` firmware revision footer.
 
-**Atmosphère's path** (what this tool populates):
+**Atmosphère's path**:
 When Atmosphère detects a fuse count mismatch (burnt fuses > expected fuses), it searches for cached warmboot files in `warmboot_mariko/`:
 
 ```cpp
@@ -228,14 +233,13 @@ This tool pre-populates that cache using the current burnt fuse count so old Atm
 - Cached warmboot exists for **burnt fuse count** (not expected fuses)
 - Naming by burnt fuses ensures the file is found during Atmosphère's search loop
 
-This is why updating hekate alone is also sufficient — hekate's sc7exit_b01.bin path is completely separate from the `warmboot_mariko/` cache and does not depend on Atmosphère's caching logic at all.
+The two files contain the same extracted warmboot payload but use the formats and locations expected by their respective boot paths.
 
 ### Troubleshooting
 
 **`Failed to match warm boot with fuses!` after running this tool**
-- **Cause**: You are booting via Hekate directly — Hekate does not use `warmboot_mariko/` cache at all
-- **Fix**: Boot via Atmosphère `fusee.bin` instead of relying on Hekate's internal boot path
-- **Note**: This tool only populates Atmosphère's warmboot cache. Hekate requires its own update to handle new firmware fuse counts
+- **Cause**: Hekate could not load the generated `sc7exit_b01.bin`, or the installed Hekate version needs additional support beyond warmboot
+- **Fix**: Confirm `sd:/bootloader/sys/l4t/sc7exit_b01.bin` was saved successfully; otherwise update Hekate or temporarily boot through Atmosphère `fusee.bin`
 
 **"Failed to extract warmboot"**
 - **Cause**: Unable to access BOOT0 or corrupted Package1
