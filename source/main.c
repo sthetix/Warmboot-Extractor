@@ -262,28 +262,6 @@ void warmboot_extraction_workflow(void) {
     print_info(251, y_pos, "Size", temp);
     y_pos += 32;
 
-    // Display target firmware
-    if (wb_info.target_firmware != 0) {
-        s_printf(temp, "0x%04X (%c%c%c%c/%c%c/%c%c)",
-                 wb_info.target_firmware,
-                 wb_info.pkg1_date[0], wb_info.pkg1_date[1], wb_info.pkg1_date[2], wb_info.pkg1_date[3],
-                 wb_info.pkg1_date[4], wb_info.pkg1_date[5],
-                 wb_info.pkg1_date[6], wb_info.pkg1_date[7]);
-        print_info(251, y_pos, "Target Firmware", temp);
-        y_pos += 32;
-    } else {
-        print_info(251, y_pos, "Target Firmware", "Unknown (new FW?)");
-        y_pos += 32;
-        SETCOLOR(COLOR_WHITE, COLOR_DEFAULT);
-        gfx_con_setpos(251, y_pos);
-        gfx_printf("Note: Firmware not recognized, using burnt fuses for naming.");
-        y_pos += 16;
-        gfx_con_setpos(251, y_pos);
-        gfx_printf("Extraction still works - warmboot binary is valid.");
-        RESETCOLOR;
-        y_pos += 32;
-    }
-
     y_pos += 16;
 
     // Save warmboot to SD using burnt fuse count

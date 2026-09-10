@@ -44,7 +44,7 @@ typedef struct {
     u32 size;               // Size of warmboot binary
     u8 fuse_count;          // Burnt fuse count (used for naming: wb_XX.bin)
     u8 burnt_fuses;         // Actual burnt fuses on device (same as fuse_count)
-    u32 target_firmware;    // Detected target firmware (0 if unknown, for display only)
+    u32 target_firmware;    // Detected target firmware (0 if unknown, used as a PK11 layout hint)
     bool is_erista;         // True if Erista, false if Mariko
     // Debug fields for troubleshooting
     u32 pk11_offset;        // Which PK11 offset was used (0x4000 or 0x7000)

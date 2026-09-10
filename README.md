@@ -66,7 +66,6 @@ The tool extracts warmboot from Package1 and creates files for **Atmosphère and
    - Locates and parses the PK11 container (offset 0x4000 or 0x7000)
    - Extracts warmboot firmware (validated 0x800-0x1000 bytes)
    - Reads burnt fuse count from ODM6/ODM7 fuse registers
-   - Displays target firmware version from Package1 metadata
    - Saves `sd:/warmboot_mariko/wb_XX.bin` for Atmosphère
    - Saves `sd:/bootloader/sys/l4t/sc7exit_b01.bin` for Hekate
 5. For Erista consoles:
@@ -186,7 +185,6 @@ The `output/Warmboot_Extractor.bin` file is the payload you copy to your SD card
 
    Warmboot Information:
        Size: 0xE80 (3712 bytes)
-       Target Firmware: 0x1600 (2026/01/23)
 
    [*] Saving warmboot to SD card...
        Filename: wb_17.bin
@@ -258,10 +256,6 @@ The two files contain the same extracted warmboot payload but use the formats an
 - **Cause**: Atmosphère incompatibility beyond warmboot
 - **Fix**: Wait for official Atmosphère update
 
-**Tool shows "Unknown (new FW?)" for firmware**
-- **Cause**: Firmware version not in database
-- **Note**: Extraction still works - burnt fuse count is used for naming
-
 ### What This Tool Does NOT Fix
 
 **Does not bypass incompatibilities:**
@@ -289,7 +283,6 @@ The tool displays comprehensive information during extraction:
 
 ### Warmboot Information (Mariko only)
 - **Size**: Binary size in hex and decimal (e.g., 0xE80 / 3712 bytes)
-- **Target Firmware**: Version code and Package1 build date (e.g., 0x1600 YYYY/MM/DD)
 - **Filename**: Output filename based on burnt fuses (e.g., wb_16.bin)
 
 ### Status Messages
