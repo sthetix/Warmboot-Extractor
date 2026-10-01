@@ -121,6 +121,7 @@ static u32 get_target_firmware_from_pkg1(const u8 *package1) {
             if (memcmp(package1 + 0x10, "20250206", 8) == 0) return 0x1400; // 20.0.0
             if (memcmp(package1 + 0x10, "20251009", 8) == 0) return 0x1500; // 21.0.0
             if (memcmp(package1 + 0x10, "20260123", 8) == 0) return 0x1600; // 22.0.0
+            if (memcmp(package1 + 0x10, "20260730", 8) == 0) return 0x1700; // 23.0.1
             break;
         default:
             break;
